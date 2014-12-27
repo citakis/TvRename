@@ -156,28 +156,3 @@ def main():
 
 main()
 
-"""
-dic=guess_file_info("Arrow.S03E07.HDTV.x264-LOL")
-#Search for a show name::
-db = api.TVDB('DF847571C94988F1')
-result = db.search(dic[u'series'], 'en')
-print len(result)
-#print result._result
-
-#Obtain a show instance and access the data::
-show = result[1]
-print show.SeriesName
-print len(show)  # List the number of seasons of the show, season 0 is the specials season
-
-#Access individual seasons::
-season = show[1]
-print len(season)  # List the number of episodes in the season, they start at index 1
-
-print season.season_number
-
-#Access an episode within the season::
-episode = season[2]
-print episode.EpisodeNumber
-
-print episode.EpisodeName
-"""
