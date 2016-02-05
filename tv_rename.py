@@ -51,7 +51,7 @@ def searchTVDB(title, season, episode):
     """
     l=[]
     new_filename=""
-    db = api.TVDB('DF847571C94988F1')
+    db = api.TVDB('tvdb_key')
     result = db.search(title, 'en')
     if len(result)==0:
         print "Search did not return any valid results"
