@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+from sys import exc_info
 from guessit import guess_file_info
 from pytvdbapi import api
 
@@ -10,12 +11,23 @@ def getFileSeasonEpisode(filename):
     The function takes the video filename as input
     and returns its title, season and episode number
     """
-    #the guessit module returns a dictionary with all the information extracted from filename
+    # the guessit module returns a dictionary with all the information extracted from filename
     fileinfo = guess_file_info(filename)
     # with the correct dictionary keys we retrieve the filename series information
-    title = fileinfo[u'series']
-    season = fileinfo[u'season']
-    episode = fileinfo[u'episodeNumber']
+    print('Retrieve info from \033[1;34m %s\033[1;m' % filename)
+    try:
+        title = fileinfo[u'series']
+    except KeyError:
+        title = raw_input("Tvseries title could not be recognised,\nplease insert one:")
+    try:
+        season = fileinfo[u'season']
+    except KeyError:
+        season = int(raw_input("Episode season could not be recognised,\nplease insert one:"))
+    try:
+        episode = fileinfo[u'episodeNumber']
+    except KeyError:
+        episode = int(raw_input("episode number could not be recognised,\nplease insert one:"))
+
     return title, season, episode
 
 
@@ -23,49 +35,60 @@ def choiceMenu(listOfOptions, title):
     """
     The function is called when more than one options are available from TVdb.
     The function takes 2 arguements, the list of available options
-    and the series title and returns a choice from the user which
-    will be an int from 1 to len(listOfOptions)
+    and the series title and returns a choice (from the user), which
+    will be an integer from 1 to len(listOfOptions)
     """
 
-    print "Search with keyword %s returned more than one results" % title
-    print "Please choose the appropriate from the choices below"
+    print("Search with keyword %s returned more than one results" % title)
+    print("Please choose the appropriate from the choices below")
     count = 0
     for element in listOfOptions:
         count += 1
-        print "#%d is %s" % (count, element)
+        print("#%d is %s" % (count, element))
     choice = raw_input("Select one of the choices: ")
     try:
         choice=int(choice)
     except ValueError:
-        print "**************************************"
-        print "* Your choice must be a valid number *"
-        print "**************************************"
+        print("**************************************")
+        print("* Your choice must be a valid number *")
+        print("**************************************")
         choiceMenu(listOfOptions, title)
     return choice
 
 
-def searchTVDB(title, season, episode):
+def searchTVDB(title, season, episode, filename):
     """
     Takes in the tvshow title, season and episode number
-    searches for it in tvdb and returns the a new filename
+    searches for it in tvdb and returns a new filename
     """
+    tvshow = None
     l=[]
-    new_filename=""
-    db = api.TVDB('tvdb_key')
+    #import your tvdb_api_key in order for the program to work
+    db = api.TVDB('tvdb_api_key')
     result = db.search(title, 'en')
+
     if len(result)==0:
-        print "Search did not return any valid results"
+        print "a0"
+        print("Search did not return any valid results")
+        title, season, episode = refine_search_criteria(title, season, episode, filename)
+        searchTVDB(title, season, episode, filename)
     elif len(result)==1:
         tvshow = result[0]
     else:
-        choice = choiceMenu(result._result, title)
-        try:assert choice < len(result)
-        except AssertionError:
-            print "**************************************"
-            print "* Your choice must be a valid number *"
-            print "**************************************"
-            choiceMenu(result._result, title)
-        tvshow = result[choice-1]
+        tvseriesList = readTVseriesListFile()
+        for tv_show in result:
+            if tv_show in tvseriesList:
+                tvshow = tv_show
+        print tvshow
+        if tvshow == None:
+            choice = choiceMenu(result._result, title)
+            try:assert choice < len(result)
+            except AssertionError:
+                print("**************************************")
+                print("* Your choice must be a valid number *")
+                print("**************************************")
+                choiceMenu(result._result, title)
+            tvshow = result[choice-1]
     season = tvshow[season]
     episode = season[episode]
     seasonNumber = season.season_number
@@ -142,6 +165,23 @@ it makes a list with the files of the directory
 and it goes through each of the files
 """
 
+def refine_search_criteria(title, season, episode, filename):
+    print('\033[1;34msearched for file %s\033[1;m' %filename)
+    print("Searced with tvshow name'%s'" %title)
+    new_title = raw_input("Please input a valid title, Enter for no change: ")
+    if new_title != "":
+        title = new_title
+
+    print("Searced with tvshow season number'%s'" %season)
+    new_season = raw_input("Please input a valid season number, Enter for no change: ")
+    if new_season != "":
+        season = new_season
+
+    print("Searced with tvshow episode number'%s'" %episode)
+    new_episode = raw_input("Please input a valid episode number, Enter for no change: ")
+    if new_episode != "":
+        episode = new_episode
+    return title, season, episode
 
 def main():
     filelist = os.listdir(os.getcwd())
@@ -149,10 +189,17 @@ def main():
         if file[-3:] in ["mp4", "mkv", "avi", "srt"]:
             title, season, episode = getFileSeasonEpisode(file)
             print (title, season, episode)
-            new_filename = searchTVDB(title, season, episode)
-            print new_filename
-            renameFile(file, new_filename)
-            ListOfchangedFiles(file, new_filename)
+            try:
+                new_filename = searchTVDB(title, season, episode, file)
+                print("renamed to \033[1;32m %s\033[1;m \n" %new_filename)
+                renameFile(file, new_filename)
+                ListOfchangedFiles(file, new_filename)
+            except:
+                print("\033[1;31m Unexcepted Error:%s " %exc_info()[0])
+                print(exc_info()[1])
+                print('\033[1;m\n')
 
-main()
 
+
+if __name__ == '__main__':
+    main()
